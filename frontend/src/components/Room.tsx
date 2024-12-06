@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Socket, io } from "socket.io-client";
+import './Room.css';
 
 const URL = "http://localhost:3000";
 
@@ -13,7 +14,7 @@ export const Room = ({
     localAudioTrack: MediaStreamTrack | null,
     localVideoTrack: MediaStreamTrack | null,
 }) => {
-    const [searchParams, setSearchParams] = useSearchParams();
+    
     const [lobby, setLobby] = useState(true);
     const [socket, setSocket] = useState<null | Socket>(null);
     const [sendingPc, setSendingPc] = useState<null | RTCPeerConnection>(null);
@@ -82,29 +83,17 @@ export const Room = ({
             setRemoteMediaStream(stream);
             // trickle ice 
             setReceivingPc(pc);
-            window.pcr = pc;
+            window.pc = pc;
             pc.ontrack = (e) => {
                 alert("ontrack");
-                // console.error("inside ontrack");
-                // const {track, type} = e;
-                // if (type == 'audio') {
-                //     // setRemoteAudioTrack(track);
-                //     // @ts-ignore
-                //     remoteVideoRef.current.srcObject.addTrack(track)
-                // } else {
-                //     // setRemoteVideoTrack(track);
-                //     // @ts-ignore
-                //     remoteVideoRef.current.srcObject.addTrack(track)
-                // }
-                // //@ts-ignore
-                // remoteVideoRef.current.play();
+                
             }
 
             pc.onicecandidate = async (e) => {
                 if (!e.candidate) {
                     return;
                 }
-                console.log("omn ice candidate on receiving seide");
+                console.log(" ice candidate on receiving side");
                 if (e.candidate) {
                    socket.emit("add-ice-candidate", {
                     candidate: e.candidate,
@@ -135,16 +124,7 @@ export const Room = ({
                 remoteVideoRef.current.srcObject.addTrack(track2)
                 //@ts-ignore
                 remoteVideoRef.current.play();
-                // if (type == 'audio') {
-                //     // setRemoteAudioTrack(track);
-                //     // @ts-ignore
-                //     remoteVideoRef.current.srcObject.addTrack(track)
-                // } else {
-                //     // setRemoteVideoTrack(track);
-                //     // @ts-ignore
-                //     remoteVideoRef.current.srcObject.addTrack(track)
-                // }
-                // //@ts-ignore
+                
             }, 5000)
         });
 
@@ -167,7 +147,7 @@ export const Room = ({
             if (type == "sender") {
                 setReceivingPc(pc => {
                     if (!pc) {
-                        console.error("receicng pc nout found")
+                        console.error("receiving pc not found");
                     } else {
                         console.error(pc.ontrack)
                     }
@@ -198,12 +178,96 @@ export const Room = ({
             }
         }
     }, [localVideoRef])
-
-    return <div>
-        Hi {name}
-        <video autoPlay width={400} height={400} ref={localVideoRef} />
-        {lobby ? "Waiting to connect you to someone" : null}
-        <video autoPlay width={400} height={400} ref={remoteVideoRef} />
-    </div>
-}
-
+    
+    const endCall = (socket: Socket | null) => {
+        if (!socket) return;
+    
+        // Notify the server to end the call
+        socket.emit("end-call");
+    
+        // Stop local tracks
+        // if (localVideoTrack) {
+        //     localVideoTrack.stop(); // Stop the local video track
+        // }
+        // if (localAudioTrack) {
+        //     localAudioTrack.stop(); // Stop the local audio track
+        // }
+    
+        // Stop remote tracks
+        if (remoteVideoTrack) {
+            remoteVideoTrack.stop(); // Stop the remote video track
+        }
+        if (remoteAudioTrack) {
+            remoteAudioTrack.stop(); // Stop the remote audio track
+        }
+    
+        // Close the peer connections
+        sendingPc?.close(); // Close the sending peer connection
+        receivingPc?.close(); // Close the receiving peer connection
+    
+        // Reset the local state
+        setLobby(true);
+        setSendingPc(null);
+        setReceivingPc(null);
+        setRemoteAudioTrack(null);
+        setRemoteVideoTrack(null);
+        setRemoteMediaStream(null);
+    
+        // Clear video elements
+       // if (localVideoRef.current) localVideoRef.current.srcObject = null;
+        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+        <Room name={name} localAudioTrack={localAudioTrack} localVideoTrack={localVideoTrack} />
+    };
+    
+    
+    return (
+        <div className="room-container">
+            <header className="room-header">
+                <h1 className="room-title">👋 Hi, {name}!</h1>
+                <p className="room-subtitle">
+                    {lobby
+                        ? "Get ready to connect with someone amazing!"
+                        : "You're connected! Have a great conversation."}
+                </p>
+            </header>
+    
+            <div className="video-container">
+                <div className="video-box local">
+                    <video
+                        autoPlay
+                        ref={localVideoRef}
+                        className="local-video"
+                    />
+                    <p className="video-label">You</p>
+                </div>
+    
+                {lobby && (
+                    <div className="lobby-message">
+                        <p>⏳ Waiting to connect you to someone...</p>
+                    </div>
+                )}
+    
+                <div className="video-box remote">
+                    <video
+                        autoPlay
+                        ref={remoteVideoRef}
+                        className="remote-video"
+                    />
+                    {remoteVideoTrack && <p className="video-label">Stranger</p>}
+                </div>
+            </div>
+    
+            {!lobby && (
+                <footer className="room-footer">
+                    <button
+                        className="end-call-button"
+                        onClick={() => endCall(socket)}
+                    >
+                        End Call
+                    </button>
+                </footer>
+            )}
+        </div>
+    );
+    
+};
