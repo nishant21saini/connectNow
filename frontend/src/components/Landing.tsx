@@ -67,12 +67,12 @@ export const Landing = () => {
   }, []);
 
   // Stop video stream
-  const stopVideoStream = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((track) => track.stop());
-    }
-  };
+  // const stopVideoStream = () => {
+  //   if (videoRef.current && videoRef.current.srcObject) {
+  //     const stream = videoRef.current.srcObject as MediaStream;
+  //     stream.getTracks().forEach((track) => track.stop());
+  //   }
+  // };
 
   useEffect(() => {
     // Hide popup when face is detected

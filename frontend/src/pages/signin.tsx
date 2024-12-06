@@ -1,14 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+// import axios from "axios";
 
 import './signin.css';
-interface User {
-  username: string;
-  token: string;
-  firstName: string;
-  userbalance: number;
-}
+// interface User {
+//   username: string;
+//   firstName: string;
+// }
 
 export const Signin: React.FC = () => {
   const [username, setUsername] = useState<string>("");
@@ -16,14 +14,14 @@ export const Signin: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const user = JSON.parse(localStorage.getItem("user") || "null");
+
 
   // Redirect to dashboard if already logged in
-  useEffect(() => {
-    if (user) {
-      navigate("/dashboard");
-    }
-  }, [user, navigate]);
+  // useEffect(() => {
+  //   if (user) {
+  //     navigate("/dashboard");
+  //   }
+  // }, [user, navigate]);
 
   const handleSignIn = async () => {
     if (!username || !password) {
@@ -32,22 +30,11 @@ export const Signin: React.FC = () => {
     }
 
     try {
-      const response = await axios.post("http://localhost:3000/api/v1/user/signin", {
-        username,
-        password,
-      });
-
-      const { token, username: uname, firstName } = response.data;
-
-      const user: User = {
-        token,
-        username: uname,
-        firstName,
-
-      };
-
-      localStorage.setItem("user", JSON.stringify(user));
-      navigate("/dashboard");
+      // const response = await axios.post("", {
+      //   username,
+      //   password,
+      // });
+      navigate("/homepage");
     } catch (error: any) {
       console.error("Error during sign-in:", error);
       setErrorMessage(error.response?.data?.message || "An error occurred. Please try again.");

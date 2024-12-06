@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 import { Socket, io } from "socket.io-client";
 import './Room.css';
 
 const URL = "http://localhost:3000";
+declare global {
+    interface Window {
+        pc: RTCPeerConnection | null;
+    }
+}
 
 export const Room = ({
     name,
@@ -22,8 +26,8 @@ export const Room = ({
     const [remoteVideoTrack, setRemoteVideoTrack] = useState<MediaStreamTrack | null>(null);
     const [remoteAudioTrack, setRemoteAudioTrack] = useState<MediaStreamTrack | null>(null);
     const [remoteMediaStream, setRemoteMediaStream] = useState<MediaStream | null>(null);
-    const remoteVideoRef = useRef<HTMLVideoElement>();
-    const localVideoRef = useRef<HTMLVideoElement>();
+    const remoteVideoRef = useRef<HTMLVideoElement|null>(null);
+    const localVideoRef = useRef<HTMLVideoElement|null>(null);
 
     useEffect(() => {
         const socket = io(URL);
@@ -84,7 +88,7 @@ export const Room = ({
             // trickle ice 
             setReceivingPc(pc);
             window.pc = pc;
-            pc.ontrack = (e) => {
+            pc.ontrack = () => {
                 alert("ontrack");
                 
             }

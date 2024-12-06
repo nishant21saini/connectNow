@@ -1,14 +1,12 @@
 import React from 'react';
 import './home.css';
 import Player from 'lottie-react';
-import animationData from './chat-animation.json';// Ensure this file exists and is valid JSON
-import styles from './home.module.css';
-import { Landing } from './components/Landing';
+import animationData from './chat-animation.json';
 import { useNavigate } from 'react-router-dom';
 import randomIcon from './icons/random.png';
 import secureIcon from './icons/secure.png';
 import globalIcon from './icons/global.png';
-import { Signin } from './pages/signin';
+
 
 
 
