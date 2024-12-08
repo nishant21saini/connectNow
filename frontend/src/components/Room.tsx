@@ -202,7 +202,7 @@ export const Room = ({
             remoteVideoTrack.stop(); // Stop the remote video track
         }
         if (remoteAudioTrack) {
-            remoteAudioTrack.stop(); // Stop the remote audio track
+            remoteAudioTrack.stop();
         }
     
         // Close the peer connections
@@ -223,9 +223,16 @@ export const Room = ({
         <Room name={name} localAudioTrack={localAudioTrack} localVideoTrack={localVideoTrack} />
     };
     
-    
+    const [isMicOn, setIsMicOn] = useState(true);
+const toggleMic = () => {
+    if (localAudioTrack) {
+        localAudioTrack.enabled = !isMicOn;
+        setIsMicOn(!isMicOn);
+    }
+};
     return (
         <div className="room-container">
+            
             <header className="room-header">
                 <h1 className="room-title">👋 Hi, {name}!</h1>
                 <p className="room-subtitle">
@@ -269,6 +276,14 @@ export const Room = ({
                     >
                         End Call
                     </button>
+                    <button className="mic-toggle-button" onClick={toggleMic} aria-label={isMicOn ? "Mute Microphone" : "Unmute Microphone"}>
+    <img
+        src={isMicOn ? "/src/components/unmute.png" : "/src/components/mute.svg"}
+        alt={isMicOn ? "Unmute" : "Mute"}
+        className="mic-icon"
+    />
+</button>
+
                 </footer>
             )}
         </div>

@@ -113,7 +113,6 @@ export const Landing = () => {
 
   return (
     <div>
-      <h1>Welcome, {name}!</h1>
       {/* Assuming Room component exists and requires localAudioTrack and localVideoTrack */}
       <Room name={name} localAudioTrack={localAudioTrack} localVideoTrack={localVideoTrack} />
     </div>

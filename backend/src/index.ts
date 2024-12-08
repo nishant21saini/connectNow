@@ -1,6 +1,6 @@
+require('dotenv').config();
 import { Socket } from "socket.io";
 import http from "http";
-
 import express from 'express';
 import { Server } from 'socket.io';
 import { UserManager } from "./managers/UserManager";
@@ -24,7 +24,9 @@ io.on('connection', (socket: Socket) => {
     userManager.removeUser(socket.id);
   })
 });
+const PORT = process.env.PORT
+console.log(PORT);
 
-server.listen(3000, () => {
-    console.log('listening on *:3000');
+server.listen(PORT, () => {
+    console.log('listening on *3000:');
 });
