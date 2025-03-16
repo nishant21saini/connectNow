@@ -14,26 +14,13 @@ export const Signin: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
-
-
-  // Redirect to dashboard if already logged in
-  // useEffect(() => {
-  //   if (user) {
-  //     navigate("/dashboard");
-  //   }
-  // }, [user, navigate]);
-
   const handleSignIn = async () => {
     if (!username || !password) {
       setErrorMessage("Please enter both username and password.");
       return;
     }
-
     try {
-      // const response = await axios.post("", {
-      //   username,
-      //   password,
-      // });
+
       navigate("/homepage");
     } catch (error: any) {
       console.error("Error during sign-in:", error);

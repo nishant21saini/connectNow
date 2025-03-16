@@ -38,6 +38,7 @@ class UserManager {
         }
     }
     clearQueue() {
+        // Match users in the queue if there are at least two
         while (this.queue.length >= 2) {
             const id1 = this.queue.shift();
             const id2 = this.queue.shift();
@@ -47,9 +48,8 @@ class UserManager {
             const user2 = this.users.find((user) => user.socket.id === id2);
             if (!user1 || !user2)
                 continue;
+            // Create a room for the two users
             this.roomManager.createRoom(user1, user2);
-            // Remove users from the users array
-            this.users = this.users.filter(user => user.socket.id !== id1 && user.socket.id !== id2);
         }
     }
     initHandlers(socket) {
@@ -72,8 +72,9 @@ class UserManager {
                 return;
             const user1 = room.user1;
             const user2 = room.user2;
-            // Notify the other user
+            // Use the socket.id from the event handler's scope
             const socketId = socket.id;
+            // Notify the other user
             if ((user1 === null || user1 === void 0 ? void 0 : user1.socket.id) === socketId) {
                 user2 === null || user2 === void 0 ? void 0 : user2.socket.emit("call-ended");
             }
@@ -82,13 +83,19 @@ class UserManager {
             }
             // Remove the room
             this.roomManager.removeRoom(roomId);
-            // Re-add both users if they're not already present
-            [user1, user2].forEach(user => {
-                if (user && !this.users.some(u => u.socket.id === user.socket.id)) {
-                    this.users.push(user);
-                    this.queue.push(user.socket.id);
-                }
-            });
+            const user1AlreadyExists = this.users.some((u) => user1 && u.socket.id === user1.socket.id);
+            const user2AlreadyExists = this.users.some((u) => user2 && u.socket.id === user2.socket.id);
+            if (user1 && !user1AlreadyExists) {
+                this.users.push(user1);
+                this.queue.push(user1.socket.id);
+                console.log("user1 pushed to queue");
+            }
+            if (user2 && !user2AlreadyExists) {
+                this.users.push(user2);
+                this.queue.push(user2.socket.id);
+                console.log("user2 pushed to queue");
+            }
+            // Attempt to match users in the queue
             this.clearQueue();
         });
         // Handle disconnect event

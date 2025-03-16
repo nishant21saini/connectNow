@@ -1,4 +1,4 @@
-require('dotenv').config();
+
 import { Socket } from "socket.io";
 import http from "http";
 import express from 'express';
@@ -17,16 +17,18 @@ const io = new Server(server, {
 const userManager = new UserManager();
 
 io.on('connection', (socket: Socket) => {
-  console.log('a user connected');
-  userManager.addUser("randomName", socket);
+  const username = socket.handshake.auth.username;
+  //console.log('a user connected',socket);
+  userManager.addUser(username, socket);
   socket.on("disconnect", () => {
     console.log("user disconnected");
     userManager.removeUser(socket.id);
   })
+
 });
 const PORT = process.env.PORT
 console.log(PORT);
 
-server.listen(PORT, () => {
+server.listen(3000, () => {
     console.log('listening on *3000:');
 });
