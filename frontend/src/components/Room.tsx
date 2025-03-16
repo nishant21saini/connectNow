@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Socket, io } from "socket.io-client";
 import { User, PhoneOff, Mic, MicOff, Video, VideoOff, RefreshCw, UserPlus } from 'lucide-react';
 
-const SERVER_URL = "http://localhost:3000";
+const SERVER_URL = import.meta.env.VITE_BACKEND_URL;;
 
 // Define global type for window to access peer connection for debugging
 declare global {
