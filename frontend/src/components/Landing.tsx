@@ -1,135 +1,170 @@
 import { useEffect, useRef, useState } from "react";
 import * as faceapi from 'face-api.js';
 import { Room } from './Room';
-import { AlertCircle, Check, Loader, Camera, User } from 'lucide-react';
+import { AlertCircle, Check, Loader, User } from 'lucide-react';
 
 export const Landing = () => {
-  // Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  
-  // State
+  const detectionActiveRef = useRef<boolean>(true);
   const [faceDetected, setFaceDetected] = useState(false);
   const [name, setName] = useState("");
   const [joined, setJoined] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [localAudioTrack, setLocalAudioTrack] = useState<MediaStreamTrack | null>(null);
   const [localVideoTrack, setLocalVideoTrack] = useState<MediaStreamTrack | null>(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameraLoading, setCameraLoading] = useState(true);
-
-  // Derived state
-  const showPopup = !faceDetected || !modelsLoaded || cameraLoading;
-  const joinDisabled = !name.trim() || !faceDetected || !modelsLoaded;
-
-  // Load face detection models
+  const showPopup = (!faceDetected || !modelsLoaded || cameraLoading) && !joined;
+  const joinDisabled = !name.trim() || !faceDetected || !modelsLoaded || connecting;
   useEffect(() => {
-    let isMounted = true;
-    
     const loadModels = async () => {
       try {
-        const modelUrls = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js/weights';
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(modelUrls),
-          faceapi.nets.faceLandmark68Net.loadFromUri(modelUrls),
-          faceapi.nets.faceRecognitionNet.loadFromUri(modelUrls)
-        ]);
-        
-        if (isMounted) {
-          setModelsLoaded(true);
-          await startVideoStream();
-        }
+
+        await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js/weights');
+        await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js/weights');
+        await faceapi.nets.faceRecognitionNet.loadFromUri('https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js/weights');
+        setModelsLoaded(true);
+        startVideoStream();
       } catch (error) {
-        console.error("Model loading error:", error);
-        if (isMounted) setError("Failed to load face detection. Please refresh.");
+       
+        setError("Failed to load face detection models. Please check your internet connection and refresh.");
       }
     };
     
     loadModels();
     
     return () => {
-      isMounted = false;
+      
       stopMediaStream();
     };
   }, []);
 
-  // Media stream handling
+
   const startVideoStream = async () => {
     try {
       setCameraLoading(true);
+      
+      if (streamRef.current) {
+        stopMediaStream(); 
+      }
+      
+      console.log("Requesting camera access...");
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: "user", 
-          width: { ideal: 1280 }, 
-          height: { ideal: 720 } 
+          width: { ideal: 600 }, 
+          height: { ideal: 480 } 
         },
         audio: { echoCancellation: true, noiseSuppression: true }
       });
       
-      if (!videoRef.current) return;
-      
+    
       streamRef.current = stream;
+      
+      if (!videoRef.current) {
+        
+        setError("Video element not found. Please refresh.");
+        setCameraLoading(false);
+        return;
+      }
+      
       videoRef.current.srcObject = stream;
+      videoRef.current.muted = true;
+      videoRef.current.onloadeddata = () => {
+       
+        if (videoRef.current) {
+          videoRef.current.play()
+            .then(() => {
+             
+              
+              if (streamRef.current) {
+                const audioTracks = streamRef.current.getAudioTracks();
+                const videoTracks = streamRef.current.getVideoTracks();
+                
+                if (audioTracks.length > 0) setLocalAudioTrack(audioTracks[0]);
+                if (videoTracks.length > 0) setLocalVideoTrack(videoTracks[0]);
+              }
+              
+              setCameraLoading(false);
+            })
+            .catch(err => {
+            
+              setError("Failed to play video stream. Please refresh and try again.");
+              setCameraLoading(false);
+            });
+        }
+      };
       
-      await videoRef.current.play().catch(e => {
-        throw new Error('Video playback failed');
-      });
+      // Add error handler
+      videoRef.current.onerror = () => {
+   
+        setError("Video element encountered an error.");
+        setCameraLoading(false);
+      };
       
-      setLocalAudioTrack(stream.getAudioTracks()[0]);
-      setLocalVideoTrack(stream.getVideoTracks()[0]);
-      setCameraLoading(false);
     } catch (error) {
-      console.error("Media access error:", error);
-      setError("Camera/microphone access required. Please enable permissions.");
+     
+      setError("Camera access denied. Please enable camera permissions and refresh.");
       setCameraLoading(false);
     }
   };
 
   const stopMediaStream = () => {
-    streamRef.current?.getTracks().forEach(track => {
-      track.stop();
-      track.enabled = false;
-    });
-    streamRef.current = null;
+    if (streamRef.current) {
+    
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+      });
+      streamRef.current = null;
+    }
   };
 
-  // Face detection
+  // Face detection interval
   useEffect(() => {
-    if (!modelsLoaded || !videoRef.current) return;
+    if (cameraLoading || !modelsLoaded || joined) return;
     
-    let detectionActive = true;
-    
-    const detectFaces = async () => {
-      try {
-        const detections = await faceapi
-          .detectAllFaces(videoRef.current!, new faceapi.TinyFaceDetectorOptions({ inputSize: 320 }))
-          .withFaceLandmarks();
-        
-        if (detectionActive) {
-          setFaceDetected(detections.length > 0);
+    const interval = setInterval(async () => {
+      if (videoRef.current && detectionActiveRef.current) {
+        try {
+          const detections = await faceapi.detectAllFaces(
+            videoRef.current, 
+            new faceapi.TinyFaceDetectorOptions()
+          ).withFaceLandmarks().withFaceDescriptors();
+          
+          setFaceDetected(detections.length > 0); 
+          console.log(`Detected ${detections.length} faces`);
+        } catch (error) {
+          console.error("Face detection error:", error);
         }
-      } catch (error) {
-        console.error("Detection error:", error);
       }
-    };
+    }, 1000); 
     
-    const detectionInterval = setInterval(detectFaces, 1000);
-    
-    return () => {
-      detectionActive = false;
-      clearInterval(detectionInterval);
-    };
-  }, [modelsLoaded]);
+    return () => clearInterval(interval); 
+  }, [cameraLoading, modelsLoaded, joined]);
 
   // Handlers
-  const handleJoin = () => {
-    if (!joinDisabled) {
+  const handleJoin = async () => {
+    if (joinDisabled) return;
+    
+    try {
+      setConnecting(true);
+   
+      detectionActiveRef.current = false;
+      await new Promise(resolve => setTimeout(resolve, 1500));
       setJoined(true);
+    } catch (error) {
+      setError("Failed to connect. Please try again.");
+    } finally {
+      setConnecting(false);
     }
   };
 
   const handleRetry = async () => {
     setError(null);
+    detectionActiveRef.current = true;
+    setFaceDetected(false);
     await startVideoStream();
   };
 
@@ -139,7 +174,6 @@ export const Landing = () => {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-gray-900 flex justify-center items-center">
-      {/* Error Toast */}
       {error && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2">
           <AlertCircle className="w-5 h-5" />
@@ -152,8 +186,6 @@ export const Landing = () => {
           </button>
         </div>
       )}
-
-      {/* Status Overlay */}
       <div className={`absolute top-4 left-1/2 transform -translate-x-1/2 z-30 px-4 py-3 rounded-lg shadow-lg transition-opacity ${
         showPopup ? "opacity-100" : "opacity-0 pointer-events-none"
       } ${faceDetected ? "bg-green-500" : "bg-yellow-500"} text-white flex items-center space-x-2`}>
@@ -184,7 +216,6 @@ export const Landing = () => {
         )}
       </div>
 
-      {/* Video Preview */}
       <video 
         ref={videoRef} 
         autoPlay 
@@ -192,8 +223,6 @@ export const Landing = () => {
         muted 
         className="absolute top-0 left-0 w-full h-full object-cover transform scale-x-[-1] z-10" 
       />
-
-      {/* Join Card */}
       <div className="relative z-20 flex flex-col items-center p-8 bg-gray-900/90 backdrop-blur-sm rounded-xl shadow-xl w-96">
         <div className="mb-6 text-center">
           <h1 className="text-3xl font-bold text-white mb-2">connectNow</h1>
@@ -206,7 +235,7 @@ export const Landing = () => {
           <div className="relative">
             <input
               type="text"
-              placeholder="Nishant Saini"
+              placeholder="Enter your name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-4 py-3 bg-gray-800 text-white border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 placeholder-gray-500"
@@ -220,12 +249,17 @@ export const Landing = () => {
           className={`w-full py-3.5 font-medium rounded-lg transition-all ${
             joinDisabled 
               ? 'bg-gray-700 cursor-not-allowed text-gray-400' 
-              : 'text-white bg-gradient-to-r from-cyan-400 via-cyan-500 to-cyan-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-cyan-300 dark:focus:ring-cyan-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2'
+              : 'text-white bg-gradient-to-r from-cyan-400 via-cyan-500 to-cyan-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-cyan-300 dark:focus:ring-cyan-800 rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2'
           }`}
           disabled={joinDisabled}
           onClick={handleJoin}
         >
-          {joinDisabled ? (
+          {connecting ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader className="w-4 h-4 animate-spin" />
+              Connecting...
+            </span>
+          ) : joinDisabled ? (
             <span className="flex items-center justify-center gap-2">
               <Loader className="w-4 h-4 animate-spin" />
               {!name.trim() ? "Enter your name" : "Verifying..."}
@@ -236,7 +270,7 @@ export const Landing = () => {
         </button>
       </div>
 
-      {/* System Status */}
+    
       <div className="absolute bottom-6 left-6 z-20 flex flex-col gap-3">
         <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-gray-800 text-sm text-gray-300">
           <span className={`w-2.5 h-2.5 rounded-full ${
