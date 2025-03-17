@@ -18,7 +18,7 @@ const userManager = new UserManager();
 
 io.on('connection', (socket: Socket) => {
   const username = socket.handshake.auth.username;
-  //console.log('a user connected',socket);
+  console.log('a user connected',username);
   userManager.addUser(username, socket);
   socket.on("disconnect", () => {
     console.log("user disconnected");
